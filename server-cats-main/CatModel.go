@@ -1,7 +1,5 @@
 package main
 
-import "github.com/go-pg/pg/v10"
-
 type Cat struct {
 	tableName struct{} `pg:"cats"`
 	ID        string   `json:"id" pg:"id"`
@@ -28,15 +26,68 @@ func FindAllCats() []Cat {
 //CreateCat Добавить котика.
 
 func CreateCat(cat Cat) Cat {
-	pg.Connect := PostgresConnect()
+	pgConnect := PostgresConnect()
 
-	_, err := pg.Connect.Model(&cat).Insert()
+	_, err := pgConnect.Model(&cat).Insert()
 	if err != nil {
 		panic(err)
 	}
 
+	pgConnect.Close()
+	return cat
+
+}
+
+func FindCatById(catId string) Cat {
+	var cat Cat
+	pgConnect := PostgresConnect()
+
+	pgConnect.Model(&cat).Where("id = ?", catId).First()
+
+	if err != nil {
+		panic(err)
+	}
 
 	pgConnect.Close()
 	return cat
+}
+
+func DropCatById(catId string) Cat {
+	var cat Cat
+	pgConnect := PostgresConnect()
+
+	cat = FindCatById(catId)
+
+	_, err := pgConnect.Model(&cat).Where("id = ?", catId).Delete()
+
+	if err != nil {
+		panic(err)
+	}
+
+	pgConnect.Close()
+	return cat
+}
+
+func UpdateCat(cat Cat) Cat {
+	pgConnect := PostgresConnect()
+
+	oldCat := FindCatById(cat.ID)
+
+	oldCat.Name = cat.Name
+	oldCat.IsStrip = cat.IsStrip
+	oldCat.Color = cat.Color
+
+	_, err := pgConnect.Model(&oldCat).
+		Set("name = ?", oldCat.Name).
+		Set("is_strip = ?", oldCat.IsStrip).
+		Set("color = ?", oldCat.Color).
+		Where("id = ?", oldCat.ID).
+		Update()
+	if err != nil {
+		panic(err)
+	}
+
+	pgConnect.Close()
+	return oldCat
 
 }
